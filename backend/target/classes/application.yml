@@ -1,0 +1,111 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: smartqueue
+
+  profiles:
+    active: dev
+
+  datasource:
+    url: jdbc:h2:mem:smartqueue;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 5000
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 4
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:c2VjcmV0S2V5Rm9yU21hcnRRdWV1ZUFwcGxpY2F0aW9uMjAyNkVudGVycHJpc2VHcmFkZQ==}
+  access-token-expiration: 900000      # 15 minutes
+  refresh-token-expiration: 604800000  # 7 days
+
+# Queue Configuration
+queue:
+  no-show-timeout-minutes: 5
+  max-tokens-per-branch: 999
+  auto-advance-enabled: true
+  estimated-service-time-minutes: 15
+
+# Notification Configuration
+notification:
+  enabled: true
+  sms:
+    enabled: ${SMS_ENABLED:false}
+    provider: mock
+  email:
+    enabled: ${EMAIL_ENABLED:false}
+    provider: mock
+  whatsapp:
+    enabled: ${WHATSAPP_ENABLED:false}
+    provider: mock
+
+# Twilio Configuration (when using real provider)
+twilio:
+  account-sid: ${TWILIO_ACCOUNT_SID:}
+  auth-token: ${TWILIO_AUTH_TOKEN:}
+  phone-number: ${TWILIO_PHONE_NUMBER:}
+
+# SendGrid Configuration (when using real provider)
+sendgrid:
+  api-key: ${SENDGRID_API_KEY:}
+  from-email: ${SENDGRID_FROM_EMAIL:noreply@smartqueue.com}
+
+# Logging
+logging:
+  level:
+    com.smartqueue: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"
+
+# Cors
+cors:
+  allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+  allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true

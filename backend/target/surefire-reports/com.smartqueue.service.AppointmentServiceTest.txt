@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.smartqueue.service.AppointmentServiceTest
+-------------------------------------------------------------------------------
+Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.936 s -- in com.smartqueue.service.AppointmentServiceTest

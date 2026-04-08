@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.smartqueue.service.QueueServiceTest$CancelToken
+-------------------------------------------------------------------------------
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s -- in com.smartqueue.service.QueueServiceTest$CancelToken

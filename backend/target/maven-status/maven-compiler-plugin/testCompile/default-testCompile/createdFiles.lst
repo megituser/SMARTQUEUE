@@ -1,0 +1,9 @@
+com\smartqueue\service\QueueServiceTest.class
+com\smartqueue\service\QueueServiceTest$IssueToken.class
+com\smartqueue\service\QueueServiceTest$CancelToken.class
+com\smartqueue\service\AppointmentServiceTest.class
+com\smartqueue\service\AppointmentServiceTest$CheckIn.class
+com\smartqueue\service\QueueServiceTest$CallNext.class
+com\smartqueue\service\QueueServiceTest$CompleteService.class
+com\smartqueue\service\AppointmentServiceTest$BookAppointment.class
+com\smartqueue\service\AppointmentServiceTest$GetSlots.class
