@@ -5,6 +5,7 @@ import com.smartqueue.dto.request.TokenRequest;
 import com.smartqueue.dto.response.AppointmentResponse;
 import com.smartqueue.dto.response.SlotResponse;
 import com.smartqueue.dto.response.TokenResponse;
+import com.smartqueue.exception.BadRequestException;
 import com.smartqueue.exception.ResourceNotFoundException;
 import com.smartqueue.model.*;
 import com.smartqueue.model.enums.*;
@@ -138,15 +139,30 @@ public class AppointmentService {
 
     @Transactional
     public TokenResponse checkIn(Long appointmentId) {
+        log.info("Processing check-in for appointmentId: {}", appointmentId);
+
         // Find with lock so users aren't checking-in an appointment
         // at the exact millisecond an admin is trying to cancel it
         Appointment appointment = appointmentRepository.findWithLockById(appointmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found", appointmentId));
 
-        if (appointment.getStatus() != AppointmentStatus.BOOKED &&
-                appointment.getStatus() != AppointmentStatus.CONFIRMED) {
-            throw new IllegalStateException("Appointment cannot be checked in. Status is " + appointment.getStatus());
+        if (appointment.getStatus() != AppointmentStatus.BOOKED) {
+            log.error("Failed check-in for appointment {}: invalid status {}", appointmentId, appointment.getStatus());
+            throw new BadRequestException("Only BOOKED appointments can be checked in. Current status: " + appointment.getStatus());
         }
+
+        if (appointment.getQueueToken() != null) {
+            log.warn("Failed check-in for appointment {}: already checked in with token {}", appointmentId, appointment.getQueueToken().getTokenNumber());
+            throw new BadRequestException("Appointment is already checked in");
+        }
+
+        if (appointment.getBranch() == null || appointment.getService() == null) {
+            log.error("Failed check-in for appointment {}: missing branch or service", appointmentId);
+            throw new BadRequestException("Appointment is missing branch or service information");
+        }
+
+        log.debug("Bridging appointment {} to live walk-in queue for branch {} and service {}", 
+                  appointmentId, appointment.getBranch().getId(), appointment.getService().getId());
 
         // Bridge the appointment over into the live walk-in queue
         TokenRequest tokenRequest = TokenRequest.builder()
@@ -167,7 +183,7 @@ public class AppointmentService {
         // your schema allows
         appointmentRepository.save(appointment);
 
-        log.info("Checked in appointment {} -> Live token {}", appointmentId, liveToken.getTokenNumber());
+        log.info("Successfully checked in appointment {} -> Live token {}", appointmentId, liveToken.getTokenNumber());
         return liveToken;
     }
 

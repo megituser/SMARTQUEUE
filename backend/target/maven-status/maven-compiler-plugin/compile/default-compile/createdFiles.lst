@@ -91,6 +91,7 @@ com\smartqueue\cache\QueueCacheService.class
 com\smartqueue\config\SecurityConfig.class
 com\smartqueue\dto\response\TokenResponse.class
 com\smartqueue\dto\response\QueueStatusResponse$CounterStatusResponse.class
+com\smartqueue\exception\BadRequestException.class
 com\smartqueue\model\enums\TokenPriority.class
 com\smartqueue\repository\QueueTokenRepository.class
 com\smartqueue\dto\request\BranchRequest$BranchRequestBuilder.class

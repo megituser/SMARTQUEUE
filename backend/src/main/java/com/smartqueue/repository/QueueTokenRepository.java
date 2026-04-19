@@ -1,6 +1,7 @@
 package com.smartqueue.repository;
 
 import com.smartqueue.model.QueueToken;
+import com.smartqueue.model.enums.TokenPriority;
 import com.smartqueue.model.enums.TokenStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
@@ -35,9 +36,29 @@ public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
     // Core Queue Logic & Aggregation
     // =================================================================================================
 
-    List<QueueToken> findByBranchIdAndStatusOrderByPriorityAscIssuedAtAsc(Long branchId, TokenStatus status);
+    @Query("""
+            SELECT q FROM QueueToken q
+            WHERE q.branch.id = :branchId
+              AND q.status = :status
+            ORDER BY 
+              CASE q.priority WHEN 'VIP' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END, 
+              q.issuedAt ASC
+            """)
+    List<QueueToken> findByBranchIdAndStatusOrderByPriorityAscIssuedAtAsc(
+            @Param("branchId") Long branchId, 
+            @Param("status") TokenStatus status);
 
-    List<QueueToken> findByBranchIdAndStatusInOrderByPriorityAscIssuedAtAsc(Long branchId, List<TokenStatus> statuses);
+    @Query("""
+            SELECT q FROM QueueToken q
+            WHERE q.branch.id = :branchId
+              AND q.status IN :statuses
+            ORDER BY 
+              CASE q.priority WHEN 'VIP' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END, 
+              q.issuedAt ASC
+            """)
+    List<QueueToken> findByBranchIdAndStatusInOrderByPriorityAscIssuedAtAsc(
+            @Param("branchId") Long branchId, 
+            @Param("statuses") List<TokenStatus> statuses);
 
     @Query("SELECT COUNT(q) FROM QueueToken q WHERE q.branch.id = :branchId AND q.status = :status")
     int countByBranchIdAndStatus(@Param("branchId") Long branchId, @Param("status") TokenStatus status);
@@ -70,7 +91,9 @@ public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
             WHERE q.branch.id = :branchId
               AND q.service.id = :serviceId
               AND q.status = 'WAITING'
-            ORDER BY q.priority ASC, q.issuedAt ASC
+            ORDER BY 
+              CASE q.priority WHEN 'VIP' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END, 
+              q.issuedAt ASC
             """)
     List<QueueToken> findWaitingTokensForService(@Param("branchId") Long branchId, @Param("serviceId") Long serviceId);
 
@@ -83,12 +106,15 @@ public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
             FROM QueueToken q
             WHERE q.branch.id = :branchId
               AND q.status = 'WAITING'
-              AND q.priority <= :priority
-              AND q.issuedAt < :issuedAt
+              AND (
+                CASE q.priority WHEN 'VIP' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END < 
+                CASE :priority WHEN 'VIP' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END
+                OR (q.priority = :priority AND q.issuedAt < :issuedAt)
+              )
             """)
     int countAheadInQueue(
             @Param("branchId") Long branchId,
-            @Param("priority") String priority,
+            @Param("priority") TokenPriority priority,
             @Param("issuedAt") LocalDateTime issuedAt);
 
     // =================================================================================================
@@ -105,7 +131,9 @@ public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
             WHERE q.branch.id = :branchId
               AND q.service.id IN :serviceIds
               AND q.status = 'WAITING'
-            ORDER BY q.priority ASC, q.issuedAt ASC
+            ORDER BY 
+              CASE q.priority WHEN 'VIP' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END, 
+              q.issuedAt ASC
             """)
     List<QueueToken> findNextTokenToCall(
             @Param("branchId") Long branchId,

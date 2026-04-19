@@ -112,11 +112,11 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- H2 for local execution -->
+        <!-- H2 for integration tests only -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>runtime</scope>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

@@ -26,6 +26,12 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadRequest(BadRequestException ex) {
+        log.warn("Bad request: {}", ex.getMessage());
+        return response(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     // DuplicateResourceException extends BusinessException — order matters here,
     // more specific handler must be declared first.
     @ExceptionHandler(DuplicateResourceException.class)

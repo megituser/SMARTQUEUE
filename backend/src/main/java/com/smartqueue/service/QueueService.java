@@ -3,7 +3,7 @@ package com.smartqueue.service;
 import com.smartqueue.dto.request.TokenRequest;
 import com.smartqueue.dto.response.QueueStatusResponse;
 import com.smartqueue.dto.response.TokenResponse;
-import com.smartqueue.exception.BusinessException;
+import com.smartqueue.exception.BadRequestException;
 import com.smartqueue.exception.ResourceNotFoundException;
 import com.smartqueue.model.*;
 import com.smartqueue.model.enums.*;
@@ -37,8 +37,13 @@ public class QueueService {
     @Value("${queue.estimated-service-time-minutes:15}")
     private int defaultServiceTime;
 
+    // ================= ISSUE TOKEN =================
     @Transactional
     public TokenResponse issueToken(TokenRequest request) {
+
+        log.info("Issuing token for branchId={}, serviceId={}",
+                request.getBranchId(), request.getServiceId());
+
         Branch branch = branchRepository.findWithLockById(request.getBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Branch not found", request.getBranchId()));
 
@@ -46,18 +51,17 @@ public class QueueService {
                 .orElseThrow(() -> new ResourceNotFoundException("Service not found", request.getServiceId()));
 
         if (!service.getBranch().getId().equals(branch.getId())) {
-            log.error("Service {} does not belong to branch {}", service.getId(), branch.getId());
-            throw new IllegalArgumentException("Service not available at this branch");
+            throw new BadRequestException("Service not available at this branch");
         }
 
         int waitingCount = tokenRepository.countByBranchIdAndStatus(branch.getId(), TokenStatus.WAITING);
+
         int activeCounters = counterRepository.countByBranchIdAndStatus(branch.getId(), CounterStatus.OPEN);
-        if (activeCounters == 0) {
-            activeCounters = 1;
-        }
+        if (activeCounters == 0) activeCounters = 1;
 
         Double avgTime = tokenRepository.findAverageServiceTime(branch.getId(), LocalDate.now().atStartOfDay());
         int serviceTime = avgTime != null ? avgTime.intValue() : defaultServiceTime;
+
         int estimatedWait = (waitingCount * serviceTime) / activeCounters;
 
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
@@ -65,11 +69,13 @@ public class QueueService {
         int nextSeq = maxSeq == null ? 1 : maxSeq + 1;
 
         if (nextSeq > maxTokensPerBranch) {
-            log.warn("Daily token limit ({}) reached for branch {}", maxTokensPerBranch, branch.getId());
-            throw new IllegalStateException("Max tokens reached for today");
+            throw new BadRequestException("Max tokens reached for today");
         }
 
-        String prefix = service.getCode().length() >= 2 ? service.getCode().substring(0, 2) : service.getCode();
+        String prefix = service.getCode().length() >= 2
+                ? service.getCode().substring(0, 2)
+                : service.getCode();
+
         String tokenNumber = prefix.toUpperCase() + String.format("%03d", nextSeq);
 
         QueueToken token = QueueToken.builder()
@@ -89,19 +95,21 @@ public class QueueService {
                 .build();
 
         tokenRepository.save(token);
-        log.info("Issued token {} for service {}", token.getTokenNumber(), service.getCode());
+
+        log.info("Token issued: {}", tokenNumber);
 
         return toResponse(token);
     }
 
+    // ================= QUEUE STATUS =================
     @Transactional(readOnly = true)
     public QueueStatusResponse getQueueStatus(Long branchId) {
+
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Branch missing", branchId));
 
-        // Just fetch the next 50 tokens so we don't blow up memory on busy branches
-        List<QueueToken> upcoming = tokenRepository.findByBranchIdAndStatusOrderByPriorityAscIssuedAtAsc(
-                branchId, TokenStatus.WAITING);
+        List<QueueToken> waiting = tokenRepository
+                .findByBranchIdAndStatusOrderByPriorityAscIssuedAtAsc(branchId, TokenStatus.WAITING);
 
         List<Counter> counters = counterRepository.findByBranchIdWithDetails(branchId);
 
@@ -111,20 +119,6 @@ public class QueueService {
 
         Double avgWait = tokenRepository.findAverageWaitTime(branchId, LocalDate.now().atStartOfDay());
 
-        List<QueueStatusResponse.CounterStatusResponse> counterStatuses = counters.stream().map(c -> {
-            var builder = QueueStatusResponse.CounterStatusResponse.builder()
-                    .counterId(c.getId())
-                    .counterNumber(c.getCounterNumber())
-                    .counterName(c.getName())
-                    .status(c.getStatus())
-                    .serviceNames(c.getServices().stream().map(ServiceEntity::getName).collect(Collectors.toList()));
-
-            if (c.getCurrentToken() != null) {
-                builder.currentToken(toResponse(c.getCurrentToken()));
-            }
-            return builder.build();
-        }).collect(Collectors.toList());
-
         return QueueStatusResponse.builder()
                 .branchId(branchId)
                 .branchName(branch.getName())
@@ -132,13 +126,15 @@ public class QueueService {
                 .totalServing(totalServing)
                 .totalCompleted(totalCompleted)
                 .averageWaitMinutes(avgWait == null ? defaultServiceTime : avgWait.intValue())
-                .waitingTokens(upcoming.stream().map(this::toResponse).collect(Collectors.toList()))
-                .counters(counterStatuses)
+                .waitingTokens(waiting.stream().map(this::toResponse).collect(Collectors.toList()))
+                .counters(mapCounters(counters))
                 .build();
     }
 
+    // ================= GET TOKEN =================
     @Transactional(readOnly = true)
     public TokenResponse getTokenStatus(Long tokenId) {
+
         QueueToken token = tokenRepository.findById(tokenId)
                 .orElseThrow(() -> new ResourceNotFoundException("Token not found", tokenId));
 
@@ -147,143 +143,138 @@ public class QueueService {
         if (token.getStatus() == TokenStatus.WAITING) {
             int ahead = tokenRepository.countAheadInQueue(
                     token.getBranch().getId(),
-                    token.getPriority().name(),
+                    token.getPriority(),
                     token.getIssuedAt());
+
             response.setPositionInQueue(ahead + 1);
         }
 
         return response;
     }
 
+    // ================= CANCEL =================
     @Transactional
     public TokenResponse cancelToken(Long tokenId) {
+
         QueueToken token = tokenRepository.findWithLockById(tokenId)
                 .orElseThrow(() -> new ResourceNotFoundException("Token not found", tokenId));
 
         if (token.getStatus() != TokenStatus.WAITING) {
-            log.warn("Cannot cancel token {}, current state is {}", tokenId, token.getStatus());
-            throw new IllegalStateException("Only waiting tokens can be cancelled");
+            throw new BadRequestException("Only waiting tokens can be cancelled");
         }
 
         token.setStatus(TokenStatus.CANCELLED);
         token.setCompletedAt(LocalDateTime.now());
+
         tokenRepository.save(token);
 
-        log.info("Cancelled token {}", token.getTokenNumber());
         return toResponse(token);
     }
 
+    // ================= CALL NEXT =================
     @Transactional
     public TokenResponse callNextToken(Long counterId) {
+
         Counter counter = counterRepository.findWithLockById(counterId)
-                .orElseThrow(() -> new ResourceNotFoundException("Counter missing", counterId));
+                .orElseThrow(() -> new ResourceNotFoundException("Counter not found", counterId));
 
         if (counter.getStatus() != CounterStatus.OPEN) {
-            throw new IllegalStateException("Counter is closed");
-        }
-        if (counter.getCurrentToken() != null) {
-            throw new IllegalStateException("Counter is busy");
+            throw new BadRequestException("Counter is closed");
         }
 
-        Set<Long> allowedServiceIds = counter.getServices().stream()
+        if (counter.getCurrentToken() != null) {
+            throw new BadRequestException("Counter is already serving a token");
+        }
+
+        Set<Long> allowedServices = counter.getServices().stream()
                 .map(ServiceEntity::getId)
                 .collect(Collectors.toSet());
 
         List<QueueToken> candidates = tokenRepository.findNextTokenToCall(
                 counter.getBranch().getId(),
-                new java.util.ArrayList<>(allowedServiceIds),
-                PageRequest.of(0, 10));
+                List.copyOf(allowedServices),
+                PageRequest.of(0, 10)
+        );
 
-        QueueToken nextToken = null;
-        for (QueueToken candidate : candidates) {
-            QueueToken locked = tokenRepository.findWithLockById(candidate.getId()).orElse(null);
-            if (locked != null && locked.getStatus() == TokenStatus.WAITING) {
-                nextToken = locked;
-                break;
-            }
-        }
-
-        if (nextToken == null) {
-            throw new BusinessException("No waiting customers for available services");
-        }
+        QueueToken next = candidates.stream()
+                .map(c -> tokenRepository.findWithLockById(c.getId()).orElse(null))
+                .filter(t -> t != null && t.getStatus() == TokenStatus.WAITING)
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("No waiting customers"));
 
         LocalDateTime now = LocalDateTime.now();
-        nextToken.setStatus(TokenStatus.SERVING);
-        nextToken.setCounter(counter);
-        nextToken.setCalledAt(now);
-        nextToken.setServingStartedAt(now);
-        tokenRepository.save(nextToken);
 
-        counter.setCurrentToken(nextToken);
+        next.setStatus(TokenStatus.SERVING);
+        next.setCounter(counter);
+        next.setCalledAt(now);
+        next.setServingStartedAt(now);
+
+        tokenRepository.save(next);
+
+        counter.setCurrentToken(next);
         counterRepository.save(counter);
 
-        log.info("Counter {} called token {}", counter.getCounterNumber(), nextToken.getTokenNumber());
-        return toResponse(nextToken);
+        log.info("Counter {} called token {}", counter.getCounterNumber(), next.getTokenNumber());
+
+        return toResponse(next);
     }
 
+    // ================= COMPLETE =================
     @Transactional
     public TokenResponse completeService(Long counterId) {
         return finalizeToken(counterId, TokenStatus.COMPLETED);
     }
 
+    // ================= NO SHOW =================
     @Transactional
     public TokenResponse markNoShow(Long counterId) {
         return finalizeToken(counterId, TokenStatus.NO_SHOW);
     }
 
     private TokenResponse finalizeToken(Long counterId, TokenStatus status) {
+
         Counter counter = counterRepository.findWithLockById(counterId)
                 .orElseThrow(() -> new ResourceNotFoundException("Counter not found", counterId));
 
-        QueueToken activeToken = counter.getCurrentToken();
-        if (activeToken == null) {
-            log.warn("Attempted to finalize empty counter {}", counterId);
-            throw new IllegalStateException("No active token at this counter");
+        QueueToken active = counter.getCurrentToken();
+
+        if (active == null) {
+            throw new BadRequestException("No active token at this counter");
         }
 
-        activeToken.setStatus(status);
-        activeToken.setCompletedAt(LocalDateTime.now());
-        tokenRepository.save(activeToken);
+        active.setStatus(status);
+        active.setCompletedAt(LocalDateTime.now());
+
+        tokenRepository.save(active);
 
         counter.setCurrentToken(null);
         counterRepository.save(counter);
 
-        log.debug("Token {} marked as {} at counter {}", activeToken.getTokenNumber(), status,
-                counter.getCounterNumber());
-        return toResponse(activeToken);
+        return toResponse(active);
     }
 
-    @Transactional
-    public void openCounter(Long counterId, Long userId) {
-        Counter counter = counterRepository.findWithLockById(counterId)
-                .orElseThrow(() -> new ResourceNotFoundException("Counter not found", counterId));
+    // ================= MAPPERS =================
+    private List<QueueStatusResponse.CounterStatusResponse> mapCounters(List<Counter> counters) {
+        return counters.stream().map(c -> {
+            var builder = QueueStatusResponse.CounterStatusResponse.builder()
+                    .counterId(c.getId())
+                    .counterNumber(c.getCounterNumber())
+                    .counterName(c.getName())
+                    .status(c.getStatus())
+                    .serviceNames(c.getServices().stream()
+                            .map(ServiceEntity::getName)
+                            .collect(Collectors.toList()));
 
-        if (counter.getStatus() == CounterStatus.OPEN) {
-            return;
-        }
+            if (c.getCurrentToken() != null) {
+                builder.currentToken(toResponse(c.getCurrentToken()));
+            }
 
-        counter.setStatus(CounterStatus.OPEN);
-        counterRepository.save(counter);
-        log.info("Counter {} opened by user {}", counter.getCounterNumber(), userId);
-    }
-
-    @Transactional
-    public void closeCounter(Long counterId) {
-        Counter counter = counterRepository.findWithLockById(counterId)
-                .orElseThrow(() -> new ResourceNotFoundException("Counter not found", counterId));
-
-        if (counter.getCurrentToken() != null) {
-            throw new IllegalStateException("Cannot close counter while serving a customer");
-        }
-
-        counter.setStatus(CounterStatus.CLOSED);
-        counterRepository.save(counter);
-        log.info("Counter {} closed", counter.getCounterNumber());
+            return builder.build();
+        }).collect(Collectors.toList());
     }
 
     private TokenResponse toResponse(QueueToken token) {
-        if (token == null)
-            return null;
+        if (token == null) return null;
 
         return TokenResponse.builder()
                 .id(token.getId())
@@ -308,5 +299,41 @@ public class QueueService {
                 .estimatedWaitMinutes(token.getEstimatedWaitMinutes())
                 .notes(token.getNotes())
                 .build();
+    }
+
+    @Transactional
+    public void openCounter(Long counterId) {
+
+        Counter counter = counterRepository.findById(counterId)
+                .orElseThrow(() -> new ResourceNotFoundException("Counter not found", counterId));
+
+        if (counter.getStatus() == CounterStatus.OPEN) {
+            throw new BadRequestException("Counter is already open");
+        }
+
+        counter.setStatus(CounterStatus.OPEN);
+        counterRepository.save(counter);
+
+        log.info("Counter opened: {}", counterId);
+    }
+
+    @Transactional
+    public void closeCounter(Long counterId) {
+
+        Counter counter = counterRepository.findById(counterId)
+                .orElseThrow(() -> new ResourceNotFoundException("Counter not found", counterId));
+
+        if (counter.getStatus() == CounterStatus.CLOSED) {
+            throw new BadRequestException("Counter is already closed");
+        }
+
+        if (counter.getCurrentToken() != null) {
+            throw new BadRequestException("Cannot close counter while serving a customer");
+        }
+
+        counter.setStatus(CounterStatus.CLOSED);
+        counterRepository.save(counter);
+
+        log.info("Counter closed: {}", counterId);
     }
 }

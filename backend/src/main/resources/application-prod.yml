@@ -1,0 +1,45 @@
+# =============================================================================
+# SmartQueue — Production Profile
+# =============================================================================
+# ALL secrets MUST be supplied via environment variables. No fallbacks.
+
+spring:
+  # ── MySQL (production) ───────────────────────────────────────────────────
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT:3306}/${MYSQL_DB:smartqueue}?useSSL=true&requireSSL=true&serverTimezone=UTC
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: SmartQueue-HikariPool
+      maximum-pool-size: 20
+      minimum-idle: 10
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      leak-detection-threshold: 60000
+
+  # ── JPA / Hibernate ─────────────────────────────────────────────────────
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
+
+# ── JWT (override base — NO fallback in prod) ─────────────────────────────
+jwt:
+  secret: ${JWT_SECRET}
+
+# ── Production Logging ────────────────────────────────────────────────────
+logging:
+  level:
+    root: WARN
+    com.smartqueue: INFO
+    org.springframework.security: WARN

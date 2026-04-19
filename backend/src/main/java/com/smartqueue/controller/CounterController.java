@@ -49,12 +49,11 @@ public class CounterController {
     }
 
     @PostMapping("/{counterId}/open")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'BRANCH_ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<Void>> openCounter(@PathVariable Long counterId) {
-        log.info("Opening counter: counterId={}", counterId);
 
-        // staffId resolved downstream from security context; null signals self-assignment
-        queueService.openCounter(counterId, null);
+        log.info("Opening counter: {}", counterId);
+
+        queueService.openCounter(counterId);
 
         return ResponseEntity.ok(ApiResponse.success("Counter opened", null));
     }

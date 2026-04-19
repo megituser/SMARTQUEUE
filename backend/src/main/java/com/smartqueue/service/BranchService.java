@@ -210,14 +210,45 @@ public class BranchService {
                 // to avoid N+1 query floods on getServices() which scales poorly with more
                 // counters
                 return counterRepository.findByBranchIdWithDetails(branchId).stream()
-                                .map(c -> QueueStatusResponse.CounterStatusResponse.builder()
-                                                .counterId(c.getId())
-                                                .counterNumber(c.getCounterNumber())
-                                                .counterName(c.getName())
-                                                .status(c.getStatus())
-                                                .serviceNames(c.getServices().stream().map(ServiceEntity::getName)
-                                                                .collect(Collectors.toList()))
-                                                .build())
+                                .map(c -> {
+                                        var builder = QueueStatusResponse.CounterStatusResponse.builder()
+                                                        .counterId(c.getId())
+                                                        .counterNumber(c.getCounterNumber())
+                                                        .counterName(c.getName())
+                                                        .status(c.getStatus())
+                                                        .serviceNames(c.getServices().stream()
+                                                                        .map(ServiceEntity::getName)
+                                                                        .collect(Collectors.toList()));
+
+                                        if (c.getCurrentToken() != null) {
+                                                QueueToken token = c.getCurrentToken();
+                                                builder.currentToken(TokenResponse.builder()
+                                                                .id(token.getId())
+                                                                .tokenNumber(token.getTokenNumber())
+                                                                .branchId(token.getBranch().getId())
+                                                                .branchName(token.getBranch().getName())
+                                                                .serviceId(token.getService().getId())
+                                                                .serviceName(token.getService().getName())
+                                                                .counterId(c.getId())
+                                                                .counterName(c.getName())
+                                                                .customerName(token.getCustomerName())
+                                                                .customerPhone(token.getCustomerPhone())
+                                                                .customerEmail(token.getCustomerEmail())
+                                                                .status(token.getStatus())
+                                                                .priority(token.getPriority())
+                                                                .source(token.getSource())
+                                                                .positionInQueue(token.getPositionInQueue())
+                                                                .issuedAt(token.getIssuedAt())
+                                                                .calledAt(token.getCalledAt())
+                                                                .servingStartedAt(token.getServingStartedAt())
+                                                                .completedAt(token.getCompletedAt())
+                                                                .estimatedWaitMinutes(token.getEstimatedWaitMinutes())
+                                                                .notes(token.getNotes())
+                                                                .build());
+                                        }
+
+                                        return builder.build();
+                                })
                                 .collect(Collectors.toList());
         }
 

@@ -19,14 +19,6 @@ public class SmartQueueApplication {
         SpringApplication.run(SmartQueueApplication.class, args);
     }
 
-    /**
-     * Defensive Engineering: Force the global JVM timezone to UTC on startup.
-     * 
-     * Why?
-     * This prevents nasty, hard-to-reproduce time-drift bugs where local dev
-     * environments save timestamps differently than remote cloud servers, or
-     * when the database timezone doesn't match the application server timezone.
-     */
     @PostConstruct
     public void init() {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));

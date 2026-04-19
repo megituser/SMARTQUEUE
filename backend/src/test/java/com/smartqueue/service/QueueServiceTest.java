@@ -28,12 +28,17 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class QueueServiceTest {
 
-    @Mock private QueueTokenRepository tokenRepository;
-    @Mock private BranchRepository branchRepository;
-    @Mock private ServiceRepository serviceRepository;
-    @Mock private CounterRepository counterRepository;
+    @Mock
+    private QueueTokenRepository tokenRepository;
+    @Mock
+    private BranchRepository branchRepository;
+    @Mock
+    private ServiceRepository serviceRepository;
+    @Mock
+    private CounterRepository counterRepository;
 
-    @InjectMocks private QueueService queueService;
+    @InjectMocks
+    private QueueService queueService;
 
     private Branch testBranch;
     private ServiceEntity testService;
@@ -45,7 +50,8 @@ class QueueServiceTest {
         ReflectionTestUtils.setField(queueService, "defaultServiceTime", 15);
 
         testBranch = Branch.builder().id(1L).name("Test Hospital").code("TH").build();
-        testService = ServiceEntity.builder().id(1L).branch(testBranch).name("General").code("GC").avgServiceTimeMinutes(15).build();
+        testService = ServiceEntity.builder().id(1L).branch(testBranch).name("General").code("GC")
+                .avgServiceTimeMinutes(15).build();
         testCounter = Counter.builder().id(1L).branch(testBranch).counterNumber(1).name("Counter 1")
                 .status(CounterStatus.OPEN).services(Set.of(testService)).build();
     }
@@ -99,14 +105,15 @@ class QueueServiceTest {
         @DisplayName("Should throw when service doesn't belong to branch")
         void shouldValidateServiceBranch() {
             Branch otherBranch = Branch.builder().id(2L).name("Other").code("OT").build();
-            ServiceEntity otherService = ServiceEntity.builder().id(2L).branch(otherBranch).name("Other").code("OT").build();
+            ServiceEntity otherService = ServiceEntity.builder().id(2L).branch(otherBranch).name("Other").code("OT")
+                    .build();
 
             TokenRequest request = TokenRequest.builder().branchId(1L).serviceId(2L).build();
             when(branchRepository.findWithLockById(1L)).thenReturn(Optional.of(testBranch));
             when(serviceRepository.findById(2L)).thenReturn(Optional.of(otherService));
 
             assertThatThrownBy(() -> queueService.issueToken(request))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(com.smartqueue.exception.BadRequestException.class)
                     .hasMessageContaining("not available at this branch");
         }
     }
@@ -145,7 +152,7 @@ class QueueServiceTest {
             when(counterRepository.findWithLockById(1L)).thenReturn(Optional.of(testCounter));
 
             assertThatThrownBy(() -> queueService.callNextToken(1L))
-                    .isInstanceOf(IllegalStateException.class)
+                    .isInstanceOf(com.smartqueue.exception.BadRequestException.class)
                     .hasMessageContaining("closed");
         }
 
@@ -156,8 +163,8 @@ class QueueServiceTest {
             when(counterRepository.findWithLockById(1L)).thenReturn(Optional.of(testCounter));
 
             assertThatThrownBy(() -> queueService.callNextToken(1L))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("busy");
+                    .isInstanceOf(com.smartqueue.exception.BadRequestException.class)
+                    .hasMessageContaining("already serving");
         }
 
         @Test
@@ -167,7 +174,7 @@ class QueueServiceTest {
             when(tokenRepository.findNextTokenToCall(any(), any(), any())).thenReturn(List.of());
 
             assertThatThrownBy(() -> queueService.callNextToken(1L))
-                    .isInstanceOf(BusinessException.class)
+                    .isInstanceOf(com.smartqueue.exception.BadRequestException.class)
                     .hasMessageContaining("No waiting customers");
         }
     }
@@ -223,7 +230,7 @@ class QueueServiceTest {
             when(tokenRepository.findWithLockById(1L)).thenReturn(Optional.of(servingToken));
 
             assertThatThrownBy(() -> queueService.cancelToken(1L))
-                    .isInstanceOf(IllegalStateException.class);
+                    .isInstanceOf(com.smartqueue.exception.BadRequestException.class);
         }
     }
 }

@@ -1,0 +1,36 @@
+# =============================================================================
+# SmartQueue — Development Profile
+# =============================================================================
+
+spring:
+  # ── MySQL (local) ────────────────────────────────────────────────────────
+  datasource:
+    url: jdbc:mysql://localhost:3306/smartqueue?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:13090802}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: SmartQueue-HikariPool
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 600000
+      connection-timeout: 20000
+
+  # ── JPA / Hibernate ─────────────────────────────────────────────────────
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+# ── Dev Logging ────────────────────────────────────────────────────────────
+logging:
+  level:
+    com.smartqueue: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

@@ -24,6 +24,7 @@ D:\SMARTQUEUE\backend\src\main\java\com\smartqueue\dto\response\QueueStatusRespo
 D:\SMARTQUEUE\backend\src\main\java\com\smartqueue\dto\response\ServiceResponse.java
 D:\SMARTQUEUE\backend\src\main\java\com\smartqueue\dto\response\SlotResponse.java
 D:\SMARTQUEUE\backend\src\main\java\com\smartqueue\dto\response\TokenResponse.java
+D:\SMARTQUEUE\backend\src\main\java\com\smartqueue\exception\BadRequestException.java
 D:\SMARTQUEUE\backend\src\main\java\com\smartqueue\exception\BusinessException.java
 D:\SMARTQUEUE\backend\src\main\java\com\smartqueue\exception\DuplicateResourceException.java
 D:\SMARTQUEUE\backend\src\main\java\com\smartqueue\exception\GlobalExceptionHandler.java
