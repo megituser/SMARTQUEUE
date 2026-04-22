@@ -1,5 +1,4 @@
 package com.smartqueue.security;
-
 import com.smartqueue.model.User;
 import com.smartqueue.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

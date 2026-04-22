@@ -95,5 +95,5 @@ jobs:
       - name: Verify Docker Compose
         run: docker compose config
 
-        /backend/target/*.jar
+        
         
