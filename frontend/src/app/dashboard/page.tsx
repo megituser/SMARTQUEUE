@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthProvider';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { branchApi, queueApi, counterApi, appointmentApi } from '@/lib/api';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/useToast';
@@ -13,7 +13,7 @@ import Link from 'next/link';
 import {
   Users, Clock, CheckCircle, XCircle, AlertTriangle, Monitor,
   CalendarCheck, TrendingUp, LogOut, LayoutDashboard, ArrowRight,
-  Ticket, Building2
+  Ticket, Building2, Settings
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -33,6 +33,18 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user?.branchId) setSelectedBranch(user.branchId);
   }, [user]);
+
+  const cancelTokenMutation = useMutation({
+    mutationFn: (tokenId: number) => queueApi.cancelToken(tokenId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['queueStatus', selectedBranch] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', selectedBranch] });
+      addToast({ message: 'Token cancelled successfully', type: 'success' });
+    },
+    onError: () => {
+      addToast({ message: 'Failed to cancel token', type: 'error' });
+    }
+  });
 
   // Subscribe to WebSocket updates
   useEffect(() => {
@@ -120,9 +132,17 @@ export default function DashboardPage() {
           <Link href={`/queue?branch=${selectedBranch}`} className="btn-secondary" style={{ textDecoration: 'none', padding: '8px 16px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
             <Monitor size={14} /> Queue Display
           </Link>
+          <Link href={`/token-issue?branch=${selectedBranch}`} className="btn-secondary" style={{ textDecoration: 'none', padding: '8px 16px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Ticket size={14} /> Issue Token
+          </Link>
           <Link href={`/counter?branch=${selectedBranch}`} className="btn-secondary" style={{ textDecoration: 'none', padding: '8px 16px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
             <Ticket size={14} /> Counter
           </Link>
+          {(user?.role === 'SUPER_ADMIN' || user?.role === 'BRANCH_ADMIN') && (
+            <Link href="/admin" className="btn-secondary" style={{ textDecoration: 'none', padding: '8px 16px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Settings size={14} /> Admin
+            </Link>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 10, background: 'var(--bg-elevated)' }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12 }}>
               {user?.firstName?.[0]}
@@ -189,8 +209,33 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className={`badge badge-${t.priority.toLowerCase()}`}>{t.priority}</span>
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>~{t.estimatedWaitMinutes}m</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                        <span className={`badge badge-${t.priority.toLowerCase()}`}>{t.priority}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>~{t.estimatedWaitMinutes}m</span>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to cancel token ${t.tokenNumber}?`)) {
+                            cancelTokenMutation.mutate(t.id);
+                          }
+                        }}
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          color: 'var(--accent-red)',
+                          padding: '6px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginLeft: 4,
+                        }}
+                        title="Cancel Token"
+                        disabled={cancelTokenMutation.isPending}
+                      >
+                        <XCircle size={16} />
+                      </button>
                     </div>
                   </motion.div>
                 ))}
@@ -286,28 +331,33 @@ export default function DashboardPage() {
                         </div>
                         <span className="badge" style={{ background: badgeBg, color: badgeColor }}>{apt.status}</span>
                       </div>
-                      {apt.status === 'BOOKED' && (
-                        <button
-                          className="btn-primary"
-                          style={{ width: '100%', padding: '6px 12px', fontSize: 12 }}
-                          onClick={async () => {
-                            try {
-                              await appointmentApi.checkIn(apt.id);
-                              addToast({ message: 'Customer checked in to queue', type: 'success' });
-                              queryClient.invalidateQueries({ queryKey: ['appointments', selectedBranch] });
-                              queryClient.invalidateQueries({ queryKey: ['queueStatus', selectedBranch] });
-                            } catch (err: any) {
-                              if (err.response?.status === 400) {
-                                addToast({ message: err.response.data?.message || 'Check in failed', type: 'error' });
-                              } else {
-                                addToast({ message: 'Something went wrong', type: 'error' });
+                      <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+                        {apt.status === 'BOOKED' && (
+                          <button
+                            className="btn-primary"
+                            style={{ flex: 1, padding: '6px 12px', fontSize: 12 }}
+                            onClick={async () => {
+                              try {
+                                await appointmentApi.checkIn(apt.id);
+                                addToast({ message: 'Customer checked in to queue', type: 'success' });
+                                queryClient.invalidateQueries({ queryKey: ['appointments', selectedBranch] });
+                                queryClient.invalidateQueries({ queryKey: ['queueStatus', selectedBranch] });
+                              } catch (err: any) {
+                                if (err.response?.status === 400) {
+                                  addToast({ message: err.response.data?.message || 'Check in failed', type: 'error' });
+                                } else {
+                                  addToast({ message: 'Something went wrong', type: 'error' });
+                                }
                               }
-                            }
-                          }}
-                        >
-                          Check In
-                        </button>
-                      )}
+                            }}
+                          >
+                            Check In
+                          </button>
+                        )}
+                        <Link href={`/appointments/${apt.id}`} className="btn-secondary" style={{ flex: apt.status === 'BOOKED' ? 1 : '1 1 100%', padding: '6px 12px', fontSize: 12, textAlign: 'center', textDecoration: 'none' }}>
+                          Details
+                        </Link>
+                      </div>
                     </motion.div>
                   );
                 })}

@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { CalendarCheck, ShieldCheck, Ticket, Monitor, ArrowRight } from 'lucide-react';
+import { CalendarCheck, ShieldCheck, Ticket, Monitor, ArrowRight, Search } from 'lucide-react';
 
 export default function LandingPage() {
   return (
@@ -54,6 +54,13 @@ export default function LandingPage() {
               <button className="btn-secondary" style={{ padding: '16px 32px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <ShieldCheck size={20} />
                 Staff Access
+              </button>
+            </Link>
+
+            <Link href="/track" style={{ textDecoration: 'none' }}>
+              <button className="btn-secondary" style={{ padding: '16px 32px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Search size={20} />
+                Track Token
               </button>
             </Link>
           </div>

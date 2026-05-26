@@ -4,7 +4,7 @@ export type TokenPriority = 'NORMAL' | 'HIGH' | 'VIP';
 export type TokenSource = 'WALK_IN' | 'APPOINTMENT' | 'KIOSK' | 'ONLINE';
 export type CounterStatus = 'OPEN' | 'CLOSED' | 'ON_BREAK';
 export type AppointmentStatus = 'BOOKED' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
-export type UserRole = 'SUPER_ADMIN' | 'BRANCH_ADMIN' | 'STAFF' | 'RECEPTIONIST';
+export type UserRole = 'SUPER_ADMIN' | 'BRANCH_ADMIN' | 'STAFF' | 'COUNTER_AGENT';
 
 // ---- Models ----
 export interface ApiResponse<T> {
