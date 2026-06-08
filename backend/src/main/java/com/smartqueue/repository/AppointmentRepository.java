@@ -17,9 +17,6 @@ import java.util.Optional;
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    // =================================================================================================
-    // Concurrency & Row-Level Locking
-    // =================================================================================================
 
     /**
      * Prevents race conditions during check-ins and cancellations.
@@ -29,9 +26,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     @Query("SELECT a FROM Appointment a WHERE a.id = :id")
     Optional<Appointment> findWithLockById(@Param("id") Long id);
 
-    // =================================================================================================
-    // Native Spring Data Lookups
-    // =================================================================================================
 
     List<Appointment> findByBranchIdAndAppointmentDateAndStatusIn(
             Long branchId, LocalDate date, List<AppointmentStatus> statuses);
@@ -44,9 +38,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     boolean existsByBranchIdAndServiceIdAndAppointmentDateAndStartTimeAndStatusNot(
             Long branchId, Long serviceId, LocalDate date, LocalTime startTime, AppointmentStatus status);
 
-    // =================================================================================================
-    // Performance Optimized & Custom Queries
-    // =================================================================================================
 
     /**
      * Fetches active appointments.

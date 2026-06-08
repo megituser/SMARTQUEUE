@@ -15,16 +15,13 @@ public class QueueWebSocketService {
 
     private final SimpMessagingTemplate messagingTemplate;
 
-    // Extracted magic strings to constants for better maintainability and
-    // refactoring
     private static final String TYPE_QUEUE_UPDATE = "QUEUE_UPDATE";
     private static final String TYPE_TOKEN_UPDATE = "TOKEN_UPDATE";
     private static final String TYPE_COUNTER_UPDATE = "COUNTER_UPDATE";
     private static final String TYPE_TOKEN_CALLED = "TOKEN_CALLED";
 
     public void broadcastQueueUpdate(Long branchId) {
-        // Defensive: Prevent random NPEs if an upstream service accidentally passes
-        // null
+
         if (branchId == null)
             return;
 
@@ -37,13 +34,9 @@ public class QueueWebSocketService {
 
             messagingTemplate.convertAndSend(destination, payload);
 
-            // Standard practice: Keep high-frequency broker logs to TRACE so they don't
-            // bloat production disks
             log.trace("Broadcasted queue update to {}", destination);
 
         } catch (Exception e) {
-            // Downgraded to WARN. WebSocket broker hiccups aren't critical system failures
-            // and shouldn't trigger Sev-1 PagerDuty alarms.
             log.warn("Failed to broadcast queue update for branch {}: {}", branchId, e.getMessage());
         }
     }
@@ -61,8 +54,7 @@ public class QueueWebSocketService {
                     "timestamp", System.currentTimeMillis());
             messagingTemplate.convertAndSend(tokenDest, tokenPayload);
 
-            // Pivot broadcast: If the token is actively at a counter, alert the counter's
-            // specific channel too
+
             if (token.getCounterId() != null && token.getBranchId() != null) {
                 String counterDest = String.format("/topic/counter/%d/%d", token.getBranchId(), token.getCounterId());
                 Map<String, Object> counterPayload = Map.of(

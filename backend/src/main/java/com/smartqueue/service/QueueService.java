@@ -37,7 +37,6 @@ public class QueueService {
     @Value("${queue.estimated-service-time-minutes:15}")
     private int defaultServiceTime;
 
-    // ================= ISSUE TOKEN =================
     @Transactional
     public TokenResponse issueToken(TokenRequest request) {
 
@@ -101,7 +100,7 @@ public class QueueService {
         return toResponse(token);
     }
 
-    // ================= QUEUE STATUS =================
+
     @Transactional(readOnly = true)
     public QueueStatusResponse getQueueStatus(Long branchId) {
 
@@ -131,7 +130,7 @@ public class QueueService {
                 .build();
     }
 
-    // ================= GET TOKEN =================
+
     @Transactional(readOnly = true)
     public TokenResponse getTokenStatus(Long tokenId) {
 
@@ -152,7 +151,7 @@ public class QueueService {
         return response;
     }
 
-    // ================= CANCEL =================
+
     @Transactional
     public TokenResponse cancelToken(Long tokenId) {
 
@@ -171,7 +170,7 @@ public class QueueService {
         return toResponse(token);
     }
 
-    // ================= CALL NEXT =================
+
     @Transactional
     public TokenResponse callNextToken(Long counterId) {
 
@@ -219,7 +218,7 @@ public class QueueService {
         return toResponse(next);
     }
 
-    // ================= COMPLETE =================
+
     @Transactional
     public TokenResponse completeService(Long counterId) {
         return finalizeToken(counterId, TokenStatus.COMPLETED);
@@ -253,7 +252,7 @@ public class QueueService {
         return toResponse(active);
     }
 
-    // ================= MAPPERS =================
+
     private List<QueueStatusResponse.CounterStatusResponse> mapCounters(List<Counter> counters) {
         return counters.stream().map(c -> {
             var builder = QueueStatusResponse.CounterStatusResponse.builder()

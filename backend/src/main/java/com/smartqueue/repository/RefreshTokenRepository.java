@@ -14,9 +14,6 @@ import java.util.Optional;
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
 
-    // =================================================================================================
-    // Concurrency & Row-Level Locking
-    // =================================================================================================
 
     /**
      * Defense against token rotation race conditions (e.g. concurrent automated
@@ -29,15 +26,8 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     @Query("SELECT r FROM RefreshToken r WHERE r.token = :token")
     Optional<RefreshToken> findWithLockByToken(@Param("token") String token);
 
-    // =================================================================================================
-    // Standard Native Query Lookups
-    // =================================================================================================
-
     Optional<RefreshToken> findByToken(String token);
 
-    // =================================================================================================
-    // Bulk Database Mutations
-    // =================================================================================================
 
     /**
      * Efficiently revokes all prior active tokens for a specific user without

@@ -14,10 +14,6 @@ import java.util.Optional;
 @Repository
 public interface ServiceRepository extends JpaRepository<ServiceEntity, Long> {
 
-    // =================================================================================================
-    // Concurrency & Row-Level Locking
-    // =================================================================================================
-
     /**
      * Prevents race conditions during administrative updates to service
      * configurations
@@ -29,9 +25,7 @@ public interface ServiceRepository extends JpaRepository<ServiceEntity, Long> {
     @Query("SELECT s FROM ServiceEntity s WHERE s.id = :id")
     Optional<ServiceEntity> findWithLockById(@Param("id") Long id);
 
-    // =================================================================================================
-    // Standard Native Query Lookups
-    // =================================================================================================
+
 
     List<ServiceEntity> findByBranchIdAndIsActiveTrue(Long branchId);
 

@@ -48,9 +48,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // ========================
-                        // 🔓 PUBLIC ENDPOINTS
-                        // ========================
+                        //  PUBLIC ENDPOINTS
                         .requestMatchers("/v1/auth/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
 
@@ -64,9 +62,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/branches/*/services").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/appointments/slots").permitAll()
 
-                        // ========================
-                        // 🔒 BRANCH (PROTECTED)
-                        // ========================
+                        //  BRANCH (PROTECTED)
                         .requestMatchers(HttpMethod.GET, "/v1/branches/*/dashboard")
                         .hasAnyRole("SUPER_ADMIN", "BRANCH_ADMIN", "STAFF", "COUNTER_AGENT", "ADMIN")
 
@@ -79,24 +75,19 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/v1/branches/**")
                         .hasAnyRole("SUPER_ADMIN", "BRANCH_ADMIN")
 
-                        // ========================
-                        // 🔒 COUNTERS
-                        // ========================
+                        //  COUNTERS
                         .requestMatchers("/v1/counters/**")
                         .hasAnyRole("SUPER_ADMIN", "BRANCH_ADMIN", "STAFF", "COUNTER_AGENT")
 
-                        // ========================
-                        // 🔒 APPOINTMENTS (FIXED)
-                        // ========================
+
+                        //  APPOINTMENTS (FIXED)
                         .requestMatchers(HttpMethod.GET, "/v1/appointments/**")
                         .hasAnyRole("SUPER_ADMIN", "BRANCH_ADMIN", "STAFF")
 
                         .requestMatchers(HttpMethod.POST, "/v1/appointments/**")
                         .permitAll() // allow booking
 
-                        // ========================
-                        // 🔐 FALLBACK
-                        // ========================
+                        //  FALLBACK
                         .anyRequest().authenticated())
 
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -104,9 +95,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ========================
-    // 🔐 AUTH ENTRY POINT (401)
-    // ========================
+    //  AUTH ENTRY POINT (401)
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, ex) -> {
@@ -118,9 +107,7 @@ public class SecurityConfig {
         };
     }
 
-    // ========================
-    // 🚫 ACCESS DENIED (403)
-    // ========================
+    //  ACCESS DENIED (403)
     @Bean
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, ex) -> {
@@ -142,9 +129,8 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // ========================
-    // 🌐 CORS CONFIG
-    // ========================
+
+    //  CORS CONFIG
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();

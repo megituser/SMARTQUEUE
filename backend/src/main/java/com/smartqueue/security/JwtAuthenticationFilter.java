@@ -46,12 +46,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authenticateRequest(request);
             filterChain.doFilter(request, response);
         } finally {
-            // CRITICAL DEFENSIVE CHECK: Tomcat utilizes thread-pools. If doFilter throws an
-            // exception and we
-            // don't manually clear the MDC in a finally block, the next completely
-            // unrelated request hitting
-            // this same thread will inherit the old correlation ID, making our tracing logs
-            // completely useless.
             MDC.remove(CORRELATION_ID_KEY);
         }
     }
@@ -61,9 +55,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = extractJwtFromRequest(request);
 
             if (!StringUtils.hasText(jwt) || !jwtTokenProvider.validateToken(jwt)) {
-                // Anonymous request or invalid token. Simply return and let the downstream
-                // Spring Security config strictly decide if the specific endpoint requires auth
-                // or not.
                 return;
             }
 
@@ -85,9 +76,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     ex.getMessage());
             SecurityContextHolder.clearContext();
         } catch (Exception ex) {
-            // Downgrade from ERROR to DEBUG. Hackers or bots spamming malformed tokens
-            // shouldn't
-            // wake up the on-call engineer with Sev-1 ERROR alerts in Datadog/Sentry.
             log.debug("Authentication context resolution failed. Token may be malformed or expired. Reason: {}",
                     ex.getMessage());
             SecurityContextHolder.clearContext();

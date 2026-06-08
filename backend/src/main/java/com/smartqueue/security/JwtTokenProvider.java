@@ -92,9 +92,6 @@ public class JwtTokenProvider {
             return true;
 
         } catch (ExpiredJwtException ex) {
-            // This is an expected, normal application flow. DO NOT use log.error()
-            // otherwise your monitoring tools (Datadog/Sentry) will trigger Sev-1 alerts
-            // every time a user leaves their tab open overnight.
             log.debug("JWT token naturally expired: {}", ex.getMessage());
 
         } catch (MalformedJwtException ex) {

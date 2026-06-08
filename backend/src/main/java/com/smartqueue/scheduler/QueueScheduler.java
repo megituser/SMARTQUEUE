@@ -108,12 +108,6 @@ public class QueueScheduler {
                         .branchName(apt.getBranch().getName())
                         .serviceName(apt.getService().getName())
                         .build();
-
-                // Architect Note: Ensure this sendNotification method is executing
-                // asynchronously internally
-                // (e.g. via @Async or offloaded to a message broker). We DO NOT want
-                // third-party API latency
-                // (like Twilio/Sendgrid rate limits) to block this core scheduler thread loop.
                 notificationService.sendNotification(event);
 
                 log.info("Dispatched reminder notification for appointment {} at {}", apt.getId(), apt.getStartTime());
@@ -165,13 +159,8 @@ public class QueueScheduler {
     public void cleanupExpiredTokens() {
         try {
             refreshTokenRepository.deleteExpiredAndRevoked();
-            // Usually traced, but since this fires only once a day, INFO is perfectly fine
             log.info("Routine maintenance: Cleaned up expired/revoked refresh tokens from security database");
         } catch (Exception e) {
-            // Mostly occurs if a long manual transaction locks the table or there's a DB
-            // deadlock.
-            // Doesn't affect uptime immediately, so we just log safely and wait for
-            // tomorrow.
             log.warn("Routine token cleanup failed to execute properly", e);
         }
     }

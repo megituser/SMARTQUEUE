@@ -38,9 +38,6 @@ public class AppointmentService {
 
     @Transactional
     public AppointmentResponse bookAppointment(AppointmentRequest request) {
-        // Lock the branch to serialize bookings for the same branch.
-        // This solves double-booking race conditions natively without throwing nasty
-        // 500 DB errors.
         Branch branch = branchRepository.findWithLockById(request.getBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Branch not found", request.getBranchId()));
 
@@ -218,10 +215,6 @@ public class AppointmentService {
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
-
-    // =================================================================================================
-    // Internal Utiltites
-    // =================================================================================================
 
     private void validateBookingTime(LocalDate date, LocalTime time) {
         LocalDate today = LocalDate.now();

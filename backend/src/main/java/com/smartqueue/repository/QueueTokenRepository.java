@@ -18,9 +18,7 @@ import java.util.Optional;
 @Repository
 public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
 
-    // =================================================================================================
-    // Concurrency & Row-Level Locking
-    // =================================================================================================
+
 
     /**
      * Prevents race conditions during state transitions (e.g., Calling, Completing,
@@ -32,9 +30,6 @@ public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
     @Query("SELECT q FROM QueueToken q WHERE q.id = :id")
     Optional<QueueToken> findWithLockById(@Param("id") Long id);
 
-    // =================================================================================================
-    // Core Queue Logic & Aggregation
-    // =================================================================================================
 
     @Query("""
             SELECT q FROM QueueToken q

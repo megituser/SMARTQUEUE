@@ -15,9 +15,6 @@ import java.util.Optional;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    // =================================================================================================
-    // Concurrency & Row-Level Locking
-    // =================================================================================================
 
     /**
      * Defense against race conditions in multi-node deployments. If multiple
@@ -29,9 +26,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("SELECT n FROM Notification n WHERE n.id = :id")
     Optional<Notification> findWithLockById(@Param("id") Long id);
 
-    // =================================================================================================
-    // Standard Native Query Lookups
-    // =================================================================================================
 
     List<Notification> findByQueueTokenId(Long tokenId);
 

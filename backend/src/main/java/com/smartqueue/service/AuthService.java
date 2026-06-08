@@ -68,8 +68,6 @@ public class AuthService {
         try {
             user = userRepository.save(user);
         } catch (DataIntegrityViolationException e) {
-            // Solves the Time-Of-Check to Time-Of-Use race condition if two users
-            // register the same email at the exact same millisecond.
             log.warn("Database unique constraint caught a concurrent duplicate registration for {}", cleanEmail);
             throw new IllegalStateException("Email is already registered");
         }
@@ -84,9 +82,6 @@ public class AuthService {
     @Transactional
     public AuthResponse login(LoginRequest request) {
         String cleanEmail = normalizeEmail(request.getEmail());
-
-        // This implicitly executes CustomUserDetailsService, checking password and
-        // basic states natively
         Authentication auth = authenticateCredentials(cleanEmail, request.getPassword());
 
         User user = userRepository.findByEmail(cleanEmail)
@@ -107,10 +102,6 @@ public class AuthService {
         if (!StringUtils.hasText(tokenValue)) {
             throw new IllegalArgumentException("Refresh token is required");
         }
-
-        // Lock row to prevent token rotation race conditions (e.g., from
-        // double-clicking
-        // a button or rapid network retries throwing "token revoked" erroneously).
         RefreshToken currentToken = refreshTokenRepository.findWithLockByToken(tokenValue)
                 .orElseThrow(() -> {
                     log.debug("Token rotation failed: Refresh token not found in database");
@@ -121,9 +112,7 @@ public class AuthService {
                 || currentToken.getExpiresAt().isBefore(LocalDateTime.now())) {
             log.warn("Security Event: Attempt to use an expired or revoked refresh token for user {}",
                     currentToken.getUser().getEmail());
-            // In a strict security setup, detecting a revoked token reuse assumes token
-            // theft and you'd strip ALL active tokens.
-            // Securely failing soft for now.
+
             throw new IllegalStateException("Session expired. Please sign in again.");
         }
 
@@ -160,16 +149,11 @@ public class AuthService {
                 });
     }
 
-    // =================================================================================================
-    // Internal Utilities
-    // =================================================================================================
-
     private String normalizeEmail(String email) {
         if (!StringUtils.hasText(email)) {
             throw new IllegalArgumentException("Email cannot be empty");
         }
-        // Drastically reduces authentication headaches caused by trailing spaces or
-        // auto-capitalization on mobile
+
         return email.trim().toLowerCase();
     }
 

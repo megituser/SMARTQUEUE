@@ -35,9 +35,7 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    // Never expose this field — no getter generated intentionally via @Getter on
-    // class;
-    // override individually if needed, or use a DTO projection.
+
     @NotBlank
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;

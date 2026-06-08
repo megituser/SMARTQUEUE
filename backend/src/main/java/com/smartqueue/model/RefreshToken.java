@@ -28,7 +28,6 @@ public class RefreshToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // Stored as a hash, never the raw token — length 512 covers SHA-512 hex
     @NotNull
     @Column(unique = true, nullable = false, length = 512)
     private String token;

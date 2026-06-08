@@ -14,14 +14,10 @@ import java.io.Serializable;
 @Builder
 public class NotificationEvent implements Serializable {
 
-    // Defensive: Essential for stable Java serialization across network boundaries
-    // (e.g., if this event is dispatched off to RabbitMQ, Kafka, or Redis pub/sub)
     @Serial
     private static final long serialVersionUID = 1L;
 
-    // Strongly-typed event constants.
-    // Eliminates "magic strings" and prevents painful typos in remote schedulers or
-    // listeners.
+
     public static final String EVENT_TOKEN_ISSUED = "TOKEN_ISSUED";
     public static final String EVENT_TOKEN_CALLED = "TOKEN_CALLED";
     public static final String EVENT_APPOINTMENT_REMINDER = "APPOINTMENT_REMINDER";

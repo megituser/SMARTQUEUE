@@ -20,7 +20,7 @@ public class QueueController {
     private final QueueService queueService;
     private final QueueWebSocketService webSocketService;
 
-    // ✅ ISSUE TOKEN
+    // ISSUE TOKEN
     @PostMapping("/tokens")
     public ResponseEntity<ApiResponse<TokenResponse>> issueToken(@Valid @RequestBody TokenRequest request) {
         TokenResponse token = queueService.issueToken(request);
@@ -30,19 +30,19 @@ public class QueueController {
                 .body(ApiResponse.success("Token issued", token));
     }
 
-    // ✅ GET TOKEN
+    //  GET TOKEN
     @GetMapping("/tokens/{id}")
     public ResponseEntity<ApiResponse<TokenResponse>> getTokenStatus(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(queueService.getTokenStatus(id)));
     }
 
-    // ✅ QUEUE STATUS
+    //  QUEUE STATUS
     @GetMapping("/branch/{branchId}/status")
     public ResponseEntity<ApiResponse<QueueStatusResponse>> getQueueStatus(@PathVariable Long branchId) {
         return ResponseEntity.ok(ApiResponse.success(queueService.getQueueStatus(branchId)));
     }
 
-    // ✅ CANCEL TOKEN
+    //  CANCEL TOKEN
     @PostMapping("/tokens/{id}/cancel")
     public ResponseEntity<ApiResponse<TokenResponse>> cancelToken(@PathVariable Long id) {
         TokenResponse token = queueService.cancelToken(id);
@@ -50,7 +50,7 @@ public class QueueController {
         return ResponseEntity.ok(ApiResponse.success("Token cancelled", token));
     }
 
-    // 🔥 CALL NEXT (CRITICAL)
+    //  CALL NEXT (CRITICAL)
     @PostMapping("/counters/{counterId}/call-next")
     public ResponseEntity<ApiResponse<TokenResponse>> callNext(@PathVariable Long counterId) {
         TokenResponse token = queueService.callNextToken(counterId);
@@ -59,7 +59,7 @@ public class QueueController {
         return ResponseEntity.ok(ApiResponse.success("Token called", token));
     }
 
-    // 🔥 COMPLETE SERVICE
+    //  COMPLETE SERVICE
     @PostMapping("/counters/{counterId}/complete")
     public ResponseEntity<ApiResponse<TokenResponse>> complete(@PathVariable Long counterId) {
         TokenResponse token = queueService.completeService(counterId);
@@ -67,7 +67,7 @@ public class QueueController {
         return ResponseEntity.ok(ApiResponse.success("Service completed", token));
     }
 
-    // 🔥 NO SHOW
+    //  NO SHOW
     @PostMapping("/counters/{counterId}/no-show")
     public ResponseEntity<ApiResponse<TokenResponse>> noShow(@PathVariable Long counterId) {
         TokenResponse token = queueService.markNoShow(counterId);

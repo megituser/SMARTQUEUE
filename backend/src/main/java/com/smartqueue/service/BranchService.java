@@ -31,9 +31,6 @@ public class BranchService {
         private final QueueTokenRepository tokenRepository;
         private final AppointmentRepository appointmentRepository;
 
-        // =================================================================================================
-        // Branch Management
-        // =================================================================================================
 
         @Transactional
         public BranchResponse createBranch(BranchRequest request) {
@@ -100,9 +97,6 @@ public class BranchService {
                 return toResponse(branch);
         }
 
-        // =================================================================================================
-        // Service Management
-        // =================================================================================================
 
         @Transactional
         public ServiceResponse createService(ServiceRequest request) {
@@ -122,8 +116,6 @@ public class BranchService {
                                 .name(request.getName() != null ? request.getName().trim() : "Unnamed Service")
                                 .code(cleanCode)
                                 .description(request.getDescription())
-                                // Defensive check to prevent nasty division by zero bugs later in estimated
-                                // wait-time calculations
                                 .avgServiceTimeMinutes(request.getAvgServiceTimeMinutes() != null
                                                 && request.getAvgServiceTimeMinutes() > 0
                                                                 ? request.getAvgServiceTimeMinutes()
@@ -151,10 +143,6 @@ public class BranchService {
                                 .map(this::toResponse)
                                 .collect(Collectors.toList());
         }
-
-        // =================================================================================================
-        // Counter Management
-        // =================================================================================================
 
         @Transactional
         public void createCounter(CounterRequest request) {
@@ -205,10 +193,6 @@ public class BranchService {
 
         @Transactional(readOnly = true)
         public List<QueueStatusResponse.CounterStatusResponse> getCountersByBranch(Long branchId) {
-                // Optimize: Find by branch with details (assuming `@EntityGraph` or `JOIN
-                // FETCH`)
-                // to avoid N+1 query floods on getServices() which scales poorly with more
-                // counters
                 return counterRepository.findByBranchIdWithDetails(branchId).stream()
                                 .map(c -> {
                                         var builder = QueueStatusResponse.CounterStatusResponse.builder()
@@ -251,11 +235,6 @@ public class BranchService {
                                 })
                                 .collect(Collectors.toList());
         }
-
-        // =================================================================================================
-        // Dashboard & Analytics
-        // =================================================================================================
-
         @Transactional(readOnly = true)
         public DashboardResponse getDashboard(Long branchId) {
                 Branch branch = branchRepository.findById(branchId)
@@ -264,11 +243,6 @@ public class BranchService {
                 LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
                 LocalDate today = LocalDate.now();
 
-                // DEV NOTE: This executes 12 separate count queries. This is fine for
-                // low/medium load.
-                // If the system scales significantly, these should be aggregated natively in
-                // the Repository
-                // using a query like: SELECT status, COUNT(*) FROM queue_tokens GROUP BY status
                 int totalToday = tokenRepository.countTodayTokens(branchId, startOfDay);
                 int waiting = tokenRepository.countByBranchIdAndStatus(branchId, TokenStatus.WAITING);
                 int serving = tokenRepository.countByBranchIdAndStatus(branchId, TokenStatus.SERVING);
@@ -280,12 +254,6 @@ public class BranchService {
                 Double avgService = tokenRepository.findAverageServiceTime(branchId, startOfDay);
 
                 int activeCounters = counterRepository.countByBranchIdAndStatus(branchId, CounterStatus.OPEN);
-
-                // Optimisation Idea: Pulling down standard entity objects is heavy just for a
-                // count.
-                // We use size() here assuming counters per branch is extremely small (e.g. < 20
-                // per branch).
-                // We would use a native `countByBranchId` in repository if that scale expands.
                 int totalCounters = counterRepository.findByBranchId(branchId).size();
 
                 int appointmentsToday = appointmentRepository.countByBranchIdAndAppointmentDateAndStatusIn(
@@ -316,10 +284,6 @@ public class BranchService {
                                 .lastUpdated(LocalDateTime.now())
                                 .build();
         }
-
-        // =================================================================================================
-        // Internal Utilities
-        // =================================================================================================
 
         private String normalizeCode(String code) {
                 if (!StringUtils.hasText(code)) {

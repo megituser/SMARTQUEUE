@@ -24,9 +24,6 @@ public class NotificationService {
             return;
         }
 
-        // Trace level is preferred here natively. Event objects contain massive amounts
-        // of PII (names/contacts, etc) which we should never dump blindly into
-        // production logs.
         log.trace("Processing notification dispatch. EventType=[{}] TokenId=[{}] AppointmentId=[{}]",
                 event.getEventType(),
                 event.getTokenId(),
@@ -47,8 +44,6 @@ public class NotificationService {
         if (!StringUtils.hasText(phoneNumber))
             return;
 
-        // Defensive & Compliance: Mask PII in application logs to prevent
-        // GDPR/Compliance violations
         log.info("[MOCK SMS] Dispatch registered to mobile [{}]", obscurePhoneNumber(phoneNumber));
         log.trace("SMS Payload Content: {}", message);
     }
@@ -72,9 +67,6 @@ public class NotificationService {
         log.trace("WhatsApp Payload Content: {}", message);
     }
 
-    // =================================================================================================
-    // Internal Utilities (Compliance Masking & Mock Templating)
-    // =================================================================================================
 
     private String buildGenericMessage(NotificationEvent event) {
         String name = StringUtils.hasText(event.getCustomerName()) ? event.getCustomerName() : "Customer";
@@ -107,7 +99,7 @@ public class NotificationService {
             return "*@" + domain;
         }
 
-        // e.g. "john.doe@gmail.com" -> "j****e@gmail.com"
+
         return name.charAt(0) + "****" + name.charAt(name.length() - 1) + "@" + domain;
     }
 }

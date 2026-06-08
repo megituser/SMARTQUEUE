@@ -15,10 +15,7 @@ import java.util.Optional;
 @Repository
 public interface CounterRepository extends JpaRepository<Counter, Long> {
 
-    // =================================================================================================
     // Concurrency & Row-Level Locking
-    // =================================================================================================
-
     /**
      * Prevents race conditions when administrators are opening/closing counters or
      * simultaneously allocating a high-priority token to a suddenly available
@@ -28,9 +25,6 @@ public interface CounterRepository extends JpaRepository<Counter, Long> {
     @Query("SELECT c FROM Counter c WHERE c.id = :id")
     Optional<Counter> findWithLockById(@Param("id") Long id);
 
-    // =================================================================================================
-    // Performance Optimized & Custom Queries
-    // =================================================================================================
 
     /**
      * Resolves the dreaded N+1 query issue when rendering dashboard or queue status
@@ -65,9 +59,7 @@ public interface CounterRepository extends JpaRepository<Counter, Long> {
             @Param("serviceId") Long serviceId,
             @Param("status") CounterStatus status);
 
-    // =================================================================================================
-    // Standard Native Query Lookups
-    // =================================================================================================
+
 
     List<Counter> findByBranchId(Long branchId);
 
